@@ -1,11 +1,4 @@
----
-title: "Reproducible Research: Peer Assessment 1"
-output: 
-  html_document:
-    keep_md: true
-    theme: spacelab
-    highlight: tango
----
+# Reproducible Research: Peer Assessment 1
 # Introduction
 This report is the result of the Reproducible Research Peer assessment 1. 
 
@@ -16,12 +9,14 @@ the months of October and November, 2012 and include the number of steps
 taken in 5 minute intervals each day.
 
 # Some global settings and libraries
-```{r}
+
+```r
 library(knitr)
 opts_chunk$set(echo = TRUE)
 ```
 The plot library
-```{r}
+
+```r
 library(ggplot2)
 ```
 
@@ -36,30 +31,48 @@ The CSV has 3 columns:
 The data is hold in activity.csv, we assume it is in the same folder as this script. We use <code>read.csv()</code> to read the file. We treat the <code>steps</code> and <code>interval</code> as numeric, <code>date</code> as a date.
 
 We use a custom function to transform the data column into a R Date type. For that we use the <code>setClass</code> to define the new class and <code>setAs</code> as the custom function we will use in the <code>colclasses</code>. In that case we do not have to do an extra parsing of the dataset to convert the strings to dates.
-```{r}
+
+```r
 setClass("d_Date")
 setAs("character","d_Date", function(from) as.Date(from, format="%Y-%m-%d") )
 d <- read.csv('activity.csv', header = TRUE, sep = ",",colClasses=c("numeric", "d_Date", "numeric"))
 ```
 This is how it looks like:
 
-```{r}
+
+```r
 str(d)
+```
+
+```
+## 'data.frame':	17568 obs. of  3 variables:
+##  $ steps   : num  NA NA NA NA NA NA NA NA NA NA ...
+##  $ date    : Date, format: "2012-10-01" "2012-10-01" ...
+##  $ interval: num  0 5 10 15 20 25 30 35 40 45 ...
 ```
 
 # What is mean total number of steps taken per day?
 As stated in the assignment we can safely ignore the missing (NA) values. We aggregate the steps per date.
 
-```{r}
+
+```r
 steps_day <- aggregate(steps ~ date,d,sum)
 ```
 Here how it looks like:
-```{r}
+
+```r
 str(steps_day)
+```
+
+```
+## 'data.frame':	53 obs. of  2 variables:
+##  $ date : Date, format: "2012-10-02" "2012-10-03" ...
+##  $ steps: num  126 11352 12116 13294 15420 ...
 ```
 ##The histogram
 The frequency of the number of steps taken per day, 2000 seems a good width for the histogram:
-```{r}
+
+```r
 ggplot(steps_day, aes(x = steps)) + 
         geom_histogram(fill = "blue",binwidth=2000) + 
         labs(title="Steps Taken per Day", 
@@ -67,72 +80,91 @@ ggplot(steps_day, aes(x = steps)) +
              y = "Times per day (freq)")  
 ```
 
+![](PA1_template_files/figure-html/unnamed-chunk-7-1.png) 
+
 ## Mean and median of total number of steps per day
 We use the standard functions to calculate the mean and median. We leave out the NA (<code>na.rm=TRUE</code>).
 We round to the nearest number for display and clarity. Seen the number of steps, we don't think that "half-steps" are relevant in these results.
 
-```{r}
+
+```r
 steps_mean <- as.character(round(mean(steps_day$steps,na.rm=TRUE),0))
 steps_median <- as.character(round(median(steps_day$steps,na.rm=TRUE),0))
 ```
 
-1. Mean is **`r steps_mean`**.
-2. Median is **`r steps_median`**.
+1. Mean is **10766**.
+2. Median is **10765**.
 
 
 # What is the average daily activity pattern?
 ## The dataset
 We make a time series plot of the 5-minute interval (x-axis) and the average number of steps taken, averaged across all days (y-axis) using the aggregate function. We do not take the empty (NA) values.
 We also gvive the result some meaningfull column names.
-```{r}
+
+```r
 steps_5min <- aggregate(d$steps, by = list(interval = d$interval),FUN=mean, na.rm=TRUE)
 colnames(steps_5min) <- c("interval","steps")
 ```
 The first rows:
-```{r, echo=FALSE}
-head(steps_5min)
+
+```
+##   interval     steps
+## 1        0 1.7169811
+## 2        5 0.3396226
+## 3       10 0.1320755
+## 4       15 0.1509434
+## 5       20 0.0754717
+## 6       25 2.0943396
 ```
 
 ## Time series plot
-```{r}
+
+```r
 ggplot(steps_5min, aes(x=steps_5min$interval, y=steps_5min$steps)) +   
         geom_line(color="blue") +  
         labs(title="Average Daily Activity Pattern", x="Interval", y="Number of steps") 
 ```
 
+![](PA1_template_files/figure-html/unnamed-chunk-11-1.png) 
+
 ## The maximum number of steps
 To calculate the maximum number of steps we sort the data set by the steps in descending order. In this case the first row contains the maximum number of steps and the interval:
-```{r}
+
+```r
 max_steps <- steps_5min[order(-steps_5min$steps),]
 ```
-Interval **`r max_steps[1,1]`** has the maximum steps: **`r round(max_steps[1,2],0)`**.
+Interval **835** has the maximum steps: **206**.
 
 # Inputing missing values
 ## Calculating the number of missing values
 Using the <code>is.na()</code> function we can determine the number of missing values. An easy way of doing that is using the <code>sum</code> function:
-```{r}
+
+```r
 missing_vals <- sum(is.na(d$steps))
 ```
-So, the number of missing values is **`r missing_vals`**.
+So, the number of missing values is **2304**.
 
 ## Strategy for filling the missing values
 To replace the missing values, we propose to replace them with the mean value. Anyway the mean and median are very close together as can be seen earlier in the report.
 
 ## New dataset with missing values replacement
 We create a new dataset that is equal to the original dataset but with the missing data filled in.
-We had as median `r steps_mean`. This is over a whole day. There are 1440 minutes in a day, so there are `r 1440 / 5` chunks of 5 minutes in a day. So, on average we have:
-```{r}
+We had as median 10766. This is over a whole day. There are 1440 minutes in a day, so there are 288 chunks of 5 minutes in a day. So, on average we have:
+
+```r
 steps_mean_per_day <- as.numeric(steps_mean)/288
 ```
 
-We replace the NA with `r steps_mean_per_day`.
-```{r}
+We replace the NA with 37.3819444.
+
+```r
 d[is.na(d)] <- steps_mean_per_day
 ```
 
 ## Impact of replacing the missing values
 We use the same settings for the histogram as earlier, but this time with the updated dataset:
-```{r}
+
+```r
 steps_day_new <- aggregate(steps ~ date,d,sum)
 ggplot(steps_day_new, aes(x = steps)) + 
         geom_histogram(fill = "red",binwidth=2000) + 
@@ -141,15 +173,18 @@ ggplot(steps_day_new, aes(x = steps)) +
              y = "Times per day (freq)")  
 ```
 
+![](PA1_template_files/figure-html/unnamed-chunk-16-1.png) 
+
 We calcute the new mean and median:
-```{r}
+
+```r
 steps_new_mean   <- mean(steps_day_new$steps, na.rm=TRUE)
 steps_new_median <- median(steps_day_new$steps, na.rm=TRUE)
 ```
 
-Without the NA's: mean = `r steps_mean` and median = `r steps_median`.
+Without the NA's: mean = 10766 and median = 10765.
 
-Replacing the NA's : mean = `r steps_new_mean` and median = `r steps_new_median`.
+Replacing the NA's : mean = 1.0766164\times 10^{4} and median = 1.0766\times 10^{4}.
 
 
 **There is almost no difference, so replacing the NA's with the median was a good approach**
@@ -160,15 +195,19 @@ We use the dataset with the filled-in missing values for this part.
 ## Creating the two level factor
 We use the dataset with the replaced values. By adding a factor column stating the day of the week. We use the <code>wday()</code> function from <code>lubridate</code>.
 We bind a column to the dataset that returns TRUE is weekend or FALSE if weekday.
-```{r}
+
+```r
 library(lubridate)
 week_data <- cbind(d,wday(d$date) %in% c(1,7))
 colnames(week_data)<-c("steps","date","interval","weekday")
 ```
 
 ## Times series panel plot
-```{r}
+
+```r
 ggplot(week_data, aes(x=interval, y=steps)) + geom_line(color="blue") + facet_wrap(~weekday, nrow=2, ncol=1) + labs(x="Interval", y="Number of steps")
 ```
+
+![](PA1_template_files/figure-html/unnamed-chunk-19-1.png) 
 
 It is not easy to draw a conclusion, but it seems that the peaks occur in the weekdays (FALSE) and less in the weekend(TRUE). This could indicate that the person has maybe a job where he or she has to walk a lot.
