@@ -14,6 +14,11 @@ taken in 5 minute intervals each day.
 library(knitr)
 opts_chunk$set(echo = TRUE)
 ```
+The lubridate lib for date manipulation
+
+```r
+library(lubridate)
+```
 The plot library
 
 ```r
@@ -23,14 +28,18 @@ library(ggplot2)
 # Loading and preprocessing the data
 ## Looking at the data
 The CSV has 3 columns: 
-. steps: Number of steps taking in a 5-minute interval (missing values are coded as NA).
-. date: The date on which the measurement was taken in YYYY-MM-DD format.
-. interval: Identifier for the 5-minute interval in which measurement was taken.
+
+1) steps: Number of steps taking in a 5-minute interval (missing values are coded as NA).
+
+2) date: The date on which the measurement was taken in YYYY-MM-DD format.
+
+3) interval: Identifier for the 5-minute interval in which measurement was taken.
+
 
 ## Load the data
 The data is hold in activity.csv, we assume it is in the same folder as this script. We use <code>read.csv()</code> to read the file. We treat the <code>steps</code> and <code>interval</code> as numeric, <code>date</code> as a date.
 
-We use a custom function to transform the data column into a R Date type. For that we use the <code>setClass</code> to define the new class and <code>setAs</code> as the custom function we will use in the <code>colclasses</code>. In that case we do not have to do an extra parsing of the dataset to convert the strings to dates.
+We use a custom function to transform the data column into a R Date type. For that we use the <code>setClass</code> to define the new class and <code>setAs</code> as the custom function we will use in the <code>colClasses</code>. In that case we do not have to do an extra parsing of the dataset to convert the strings to dates.
 
 ```r
 setClass("d_Date")
@@ -70,7 +79,7 @@ str(steps_day)
 ##  $ steps: num  126 11352 12116 13294 15420 ...
 ```
 ##The histogram
-The frequency of the number of steps taken per day, 2000 seems a good width for the histogram:
+The frequency of the number of steps taken per day, <code>binwidth=2000</code> seems a good width for the histogram:
 
 ```r
 ggplot(steps_day, aes(x = steps)) + 
@@ -80,7 +89,7 @@ ggplot(steps_day, aes(x = steps)) +
              y = "Times per day (freq)")  
 ```
 
-![](PA1_template_files/figure-html/unnamed-chunk-7-1.png) 
+![](PA1_template_files/figure-html/unnamed-chunk-8-1.png) 
 
 ## Mean and median of total number of steps per day
 We use the standard functions to calculate the mean and median. We leave out the NA (<code>na.rm=TRUE</code>).
@@ -118,14 +127,17 @@ The first rows:
 ```
 
 ## Time series plot
+We use the <code>ggplot</code> with <code>geom_line</code> to display the time series:
 
 ```r
 ggplot(steps_5min, aes(x=steps_5min$interval, y=steps_5min$steps)) +   
         geom_line(color="blue") +  
-        labs(title="Average Daily Activity Pattern", x="Interval", y="Number of steps") 
+        labs(title="Average Daily Activity Pattern", 
+             x="Interval", 
+             y="Number of steps")
 ```
 
-![](PA1_template_files/figure-html/unnamed-chunk-11-1.png) 
+![](PA1_template_files/figure-html/unnamed-chunk-12-1.png) 
 
 ## The maximum number of steps
 To calculate the maximum number of steps we sort the data set by the steps in descending order. In this case the first row contains the maximum number of steps and the interval:
@@ -133,8 +145,7 @@ To calculate the maximum number of steps we sort the data set by the steps in de
 ```r
 max_steps <- steps_5min[order(-steps_5min$steps),]
 ```
-Interval **835** has the maximum steps: **206**.
-
+The innterval **835** has the maximum steps: **206**.
 # Inputing missing values
 ## Calculating the number of missing values
 Using the <code>is.na()</code> function we can determine the number of missing values. An easy way of doing that is using the <code>sum</code> function:
@@ -173,33 +184,34 @@ ggplot(steps_day_new, aes(x = steps)) +
              y = "Times per day (freq)")  
 ```
 
-![](PA1_template_files/figure-html/unnamed-chunk-16-1.png) 
+![](PA1_template_files/figure-html/unnamed-chunk-17-1.png) 
 
-We calcute the new mean and median:
+We calcute the new mean and median as follows:
 
 ```r
-steps_new_mean   <- mean(steps_day_new$steps, na.rm=TRUE)
-steps_new_median <- median(steps_day_new$steps, na.rm=TRUE)
+steps_new_mean   <- as.character(round(mean(steps_day_new$steps, na.rm=TRUE),0))
+steps_new_median <- as.character(round(median(steps_day_new$steps, na.rm=TRUE),0))
 ```
 
 Without the NA's: mean = 10766 and median = 10765.
 
-Replacing the NA's : mean = 1.0766164\times 10^{4} and median = 1.0766\times 10^{4}.
+Replacing the NA's : mean = 10766 and median = 10766.
 
 
-**There is almost no difference, so replacing the NA's with the median was a good approach**
+**There is almost no difference, so replacing the NA's with the median was a good approach.**
 
-# Are there differences in activity patterns between weekdays and weekends?
+# Differences in activity patterns between weekdays and weekends
 We use the dataset with the filled-in missing values for this part.
 
 ## Creating the two level factor
 We use the dataset with the replaced values. By adding a factor column stating the day of the week. We use the <code>wday()</code> function from <code>lubridate</code>.
-We bind a column to the dataset that returns TRUE is weekend or FALSE if weekday.
+We bind a column to the dataset that returns TRUE is weekend or FALSE if weekday. Then we replace the values with **Weekend** or **Week**.
 
 ```r
-library(lubridate)
 week_data <- cbind(d,wday(d$date) %in% c(1,7))
 colnames(week_data)<-c("steps","date","interval","weekday")
+week_data$weekday[week_data$weekday == FALSE] <-"Week"
+week_data$weekday[week_data$weekday == TRUE] <-"Weekend"
 ```
 
 ## Times series panel plot
@@ -208,6 +220,6 @@ colnames(week_data)<-c("steps","date","interval","weekday")
 ggplot(week_data, aes(x=interval, y=steps)) + geom_line(color="blue") + facet_wrap(~weekday, nrow=2, ncol=1) + labs(x="Interval", y="Number of steps")
 ```
 
-![](PA1_template_files/figure-html/unnamed-chunk-19-1.png) 
+![](PA1_template_files/figure-html/unnamed-chunk-20-1.png) 
 
 It is not easy to draw a conclusion, but it seems that the peaks occur in the weekdays (FALSE) and less in the weekend(TRUE). This could indicate that the person has maybe a job where he or she has to walk a lot.
